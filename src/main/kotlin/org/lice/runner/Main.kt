@@ -3,8 +3,11 @@
 package org.lice.runner
 
 import com.sun.java.swing.plaf.windows.WindowsLookAndFeel
+import org.lice.compiler.util.println
 import org.lice.repl.VERSION_CODE
 import java.awt.BorderLayout
+import java.awt.event.MouseAdapter
+import java.awt.event.MouseEvent
 import java.awt.event.WindowEvent
 import java.awt.event.WindowListener
 import java.io.File
@@ -20,16 +23,19 @@ import javax.swing.filechooser.FileFilter
 fun main(args: Array<String>) {
 	val p = Vector<File>()
 	val config = File("config.txt")
-	if (config.exists()) p.addAll(config
-			.readText()
-			.split("\n|\r\n")
-			.map(::File)
-			.filter { f -> f.name.endsWith(".lice") and f.isFile })
-	else config.createNewFile()
+	if (config.exists()) {
+		//language=RegExp
+		p.addAll(config
+				.readText()
+				.split("\n")
+				.map { File(it.trim()) }
+				.filter { f -> (f.name.endsWith(".lice")) }
+		)
+	} else config.createNewFile()
 	UIManager.setLookAndFeel(WindowsLookAndFeel())
 	JFrame("Lice Runner $VERSION_CODE").run frame@ {
 		setSize(500, 500)
-		defaultCloseOperation = WindowConstants.EXIT_ON_CLOSE
+		defaultCloseOperation = WindowConstants.DISPOSE_ON_CLOSE
 		layout = BorderLayout()
 		val f = JFileChooser()
 		f.fileFilter = object : FileFilter() {
@@ -47,13 +53,20 @@ fun main(args: Array<String>) {
 		addWindowListener(object : WindowListener {
 			override fun windowDeiconified(e: WindowEvent?) = Unit
 			override fun windowClosing(e: WindowEvent?) = save()
-			override fun windowClosed(e: WindowEvent?) = Unit
+			override fun windowClosed(e: WindowEvent?) = System.exit(0)
 			override fun windowActivated(e: WindowEvent?) = Unit
 			override fun windowDeactivated(e: WindowEvent?) = save()
 			override fun windowOpened(e: WindowEvent?) = Unit
 			override fun windowIconified(e: WindowEvent?) = Unit
 		})
 		val ls = JList<File>(p)
+		ls.addMouseListener(object : MouseAdapter() {
+			override fun mouseClicked(e: MouseEvent?) {
+				if (e != null && e.clickCount >= 2) {
+					ls.locationToIndex(e.point).println()
+				}
+			}
+		})
 		add(JScrollPane(ls), BorderLayout.CENTER)
 		add(JButton("Add File...").apply {
 			addActionListener { _ ->
