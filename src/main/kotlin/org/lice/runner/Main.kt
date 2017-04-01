@@ -3,7 +3,6 @@
 package org.lice.runner
 
 import com.sun.java.swing.plaf.windows.WindowsLookAndFeel
-import org.intellij.lang.annotations.Language
 import org.lice.Lice
 import org.lice.compiler.util.forceRun
 import org.lice.repl.VERSION_CODE
@@ -85,12 +84,13 @@ fun main(args: Array<String>) {
 		ls.addMouseListener(object : MouseAdapter() {
 			override fun mouseClicked(e: MouseEvent?) {
 				if (e != null && e.clickCount >= 2) {
+					output.text = ""
 					try {
 						val file = p[ls.locationToIndex(e.point)]
 						outputFrame.title = file.name
-						output.text = ""
 						Lice.run(file)
 					} catch (e: Exception) {
+						e.printStackTrace()
 					}
 				}
 			}
