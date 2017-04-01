@@ -3,14 +3,19 @@
 package org.lice.runner
 
 import com.sun.java.swing.plaf.windows.WindowsLookAndFeel
-import org.lice.compiler.util.println
+import org.intellij.lang.annotations.Language
+import org.lice.Lice
+import org.lice.compiler.util.forceRun
 import org.lice.repl.VERSION_CODE
 import java.awt.BorderLayout
+import java.awt.Font
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.awt.event.WindowEvent
 import java.awt.event.WindowListener
 import java.io.File
+import java.io.OutputStream
+import java.io.PrintStream
 import java.util.*
 import javax.swing.*
 import javax.swing.filechooser.FileFilter
@@ -21,10 +26,13 @@ import javax.swing.filechooser.FileFilter
  * @author ice1000
  */
 fun main(args: Array<String>) {
+	UIManager.setLookAndFeel(WindowsLookAndFeel())
 	val p = Vector<File>()
 	val config = File("config.txt")
+	val f = JFileChooser()
+	val output = JTextArea()
+	forceRun { output.font = Font("Consolas", 0, 16) }
 	if (config.exists()) {
-		//language=RegExp
 		p.addAll(config
 				.readText()
 				.split("\n")
@@ -32,12 +40,26 @@ fun main(args: Array<String>) {
 				.filter { f -> (f.name.endsWith(".lice")) }
 		)
 	} else config.createNewFile()
-	UIManager.setLookAndFeel(WindowsLookAndFeel())
+	val outputFrame = JFrame()
+	outputFrame.run frame@ {
+		setSize(500, 500)
+		defaultCloseOperation = WindowConstants.DISPOSE_ON_CLOSE
+		layout = BorderLayout()
+		System.setOut(PrintStream(object : OutputStream() {
+			override fun write(b: Int) = output.append(b.toChar().toString())
+			override fun write(b: ByteArray) = output.append(String(b))
+		}))
+		System.setErr(PrintStream(object : OutputStream() {
+			override fun write(b: Int) = output.append(b.toChar().toString())
+			override fun write(b: ByteArray) = output.append(String(b))
+		}))
+		add(JScrollPane(output), BorderLayout.CENTER)
+		isVisible = true
+	}
 	JFrame("Lice Runner $VERSION_CODE").run frame@ {
 		setSize(500, 500)
 		defaultCloseOperation = WindowConstants.DISPOSE_ON_CLOSE
 		layout = BorderLayout()
-		val f = JFileChooser()
 		f.fileFilter = object : FileFilter() {
 			override fun getDescription() = "(.lice) lice source code"
 			override fun accept(f: File?): Boolean {
@@ -63,7 +85,13 @@ fun main(args: Array<String>) {
 		ls.addMouseListener(object : MouseAdapter() {
 			override fun mouseClicked(e: MouseEvent?) {
 				if (e != null && e.clickCount >= 2) {
-					ls.locationToIndex(e.point).println()
+					try {
+						val file = p[ls.locationToIndex(e.point)]
+						outputFrame.title = file.name
+						output.text = ""
+						Lice.run(file)
+					} catch (e: Exception) {
+					}
 				}
 			}
 		})
